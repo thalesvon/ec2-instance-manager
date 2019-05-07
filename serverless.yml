@@ -1,0 +1,66 @@
+service: ec2-instance-manager
+
+provider:
+  name: aws
+  runtime: python3.7
+  stage: dev
+  stackName: ec2-instance-manager-stack
+  apiName: ec2-instance-manager-gw
+  deploymentBucket:
+    tags: 
+      profile: automation
+  role: arn:aws:iam::212568053769:role/role-lambda-start-stop-ec2
+
+package:
+  exclude:
+    - ec2/**
+    - README.md
+
+functions:
+  start:
+    handler: src/start.start
+    environment:
+      region: 'us-east-1'
+      instances: 'i-008e6ffb96239b1e5 i-08aeed8aef62e76c2 i-0da218f6da5cecbc1 i-0fb50980cc23f9bd2'
+    package:
+      include:
+        - src/start.py
+      exclude:
+        - src/**
+    events:
+      - http:
+          path: /start
+          method: get
+
+  stop:
+    handler: src/stop.stop
+    environment:
+      region: 'us-east-1'
+      instances: 'i-008e6ffb96239b1e5 i-08aeed8aef62e76c2 i-0da218f6da5cecbc1 i-0fb50980cc23f9bd2'
+    package:
+      include:
+        - src/stop.py
+      exclude:
+        - src/**
+    events:
+      - http:
+          path: /stop
+          method: get
+
+  change:
+    handler: src/change.change
+    environment:
+      region: 'us-east-1'
+      instances: 'i-008e6ffb96239b1e5 i-08aeed8aef62e76c2 i-0da218f6da5cecbc1 i-0fb50980cc23f9bd2'
+      start_event: 'StartEC2instances'
+      stop_event: 'StopEC2instances'  
+    package:
+      include:
+        - src/change.py
+      exclude:
+        - src/**
+    events:
+      - http:
+          path: /change
+          method: put
+
