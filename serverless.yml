@@ -12,6 +12,7 @@ provider:
   role: arn:aws:iam::212568053769:role/role-lambda-start-stop-ec2
 
 package:
+  individually: true
   exclude:
     - ec2/**
     - README.md

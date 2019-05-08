@@ -1,22 +1,26 @@
 import json
 import boto3
+import os
 
 region = os.environ['region']
 instances = os.environ['instances'].split()
 start_event = os.environ['start_event']
-stop_event = os.environ['stop-event']
+stop_event = os.environ['stop_event']
 
 def change(event, context):
     
-    data = json.loads(event['body'])
+    try:
+        data = event['action']
+    except:
+        data = 'invalid json'
 
-    if data['action'] == 'enable':
+    if data == 'enable':
         cw_events = boto3.client('events',region_name=region)
-        data = cw_events.describe_rule(Name=start_event)
-        if data['State'] == 'ENABLED':
+        event_rule = cw_events.describe_rule(Name=start_event)
+        if event_rule['State'] == 'ENABLED':
             pass
         else:
-            #cw_events.enable_rule(Name=start_event)
+            cw_events.enable_rule(Name=start_event)
 
         body = {
             "message": "your instances will be started",
@@ -29,13 +33,13 @@ def change(event, context):
         
         return response
     
-    elif data['action'] == 'disable':
+    elif data == 'disable':
         cw_events = boto3.client('events',region_name=region)
-        data = cw_events.describe_rule(Name=stop_event)
-        if data['State'] == 'DISABLED':
+        event_rule = cw_events.describe_rule(Name=stop_event)
+        if event_rule['State'] == 'DISABLED':
             pass
         else:
-            #cw_events.disable_rule(Name=stop_event)
+            cw_events.disable_rule(Name=stop_event)
 
         body = {
             "message": "your instances will be stopped",

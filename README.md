@@ -32,7 +32,7 @@ To create an artifact of entire stack including CloudFormation, run:
 
 ### Deployment
 
-To deploy entire stack:
+The first deployment, the stack needs to be created on cloudformation, so edit `serverless.yml` to deploy everything together by removing the line `individually: true` of the service package block and then deploy everything with:
 
 ```serverless deploy -v```
 

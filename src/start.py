@@ -6,7 +6,7 @@ instances = os.environ['instances'].split()
 
 def start(event, context):
     ec2 = boto3.client('ec2', region_name=region)
-    #ec2.start_instances(InstanceIds=instances)
+    ec2.start_instances(InstanceIds=instances)
     body = {
         "message": "Started your instances "+str(instances),
         "input": event

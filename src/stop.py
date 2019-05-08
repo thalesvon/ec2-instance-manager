@@ -7,7 +7,7 @@ instances = os.environ['instances'].split()
 
 def stop(event, context):
     ec2 = boto3.client('ec2', region_name=region)
-    #ec2.stop_instances(InstanceIds=instances)
+    ec2.stop_instances(InstanceIds=instances)
     body = {
         "message": "Stopped your instances "+str(instances),
         "input": event
