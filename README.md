@@ -34,8 +34,14 @@ To create an artifact of entire stack including CloudFormation, run:
 
 The first deployment, the stack needs to be created on cloudformation, so edit `serverless.yml` to deploy everything together by removing the line `individually: true` of the service package block and then deploy everything with:
 
-```serverless deploy -v```
+```
+serverless deploy -v
+```
 
-To deploy specific function:
+After first deploy, edit `serverless.yml` adding the line `individually: true` of the service package block and deploy functions separately:
 
-```serverless deploy function --function myFunction```
+```
+serverless deploy function --function change
+serverless deploy function --function start
+serverless deploy function --function stop
+```
