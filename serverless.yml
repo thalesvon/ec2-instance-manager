@@ -54,7 +54,9 @@ functions:
       region: 'us-east-1'
       instances: 'i-008e6ffb96239b1e5 i-0da218f6da5cecbc1 i-0fb50980cc23f9bd2'
       start_event: 'StartEC2instances'
-      stop_event: 'StopEC2instances'  
+      stop_event: 'StopEC2instances'
+      slack_token: 'xoxb-293645508629-622608232563-wAbR7cJykuFzZkYd25OuzZfY'
+      channel : '%23aws'  
     package:
       include:
         - src/change.py
