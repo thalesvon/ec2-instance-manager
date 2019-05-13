@@ -1,5 +1,6 @@
 import json
 import boto3
+import os
 
 region = os.environ['region']
 instances = os.environ['instances'].split()
