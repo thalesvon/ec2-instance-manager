@@ -2,6 +2,7 @@ import json
 import boto3
 import os
 import urllib.request
+import json
 
 region = os.environ['region']
 instances = os.environ['instances'].split()
@@ -13,7 +14,8 @@ channel = os.environ['channel']
 def change(event, context):
         
     try:
-        data = event['action']
+        data = json.loads(event['body'])
+        data = data['action']
     except:
         data = 'invalid json'
 
