@@ -12,7 +12,7 @@ def stop(event, context):
 
     rds = boto3.client('rds')
     for cluster in rds_clusters:
-        rds.start_db_cluster(DBClusterIdentifier=cluster)
+        rds.stop_db_cluster(DBClusterIdentifier=cluster)
 
     body = {
         "message": "Stopped your instances "+str(instances),
