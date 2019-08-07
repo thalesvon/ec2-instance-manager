@@ -3,19 +3,19 @@ import boto3
 import os
 
 region = os.environ['region']
-instances = os.environ['instances'].split()
 rds_clusters = os.environ['rds'].split()
+stack_name = os.environ['stack_name']
 
 def stop(event, context):
-    ec2 = boto3.client('ec2', region_name=region)
-    ec2.stop_instances(InstanceIds=instances)
+    cf = boto3.client('cloudformation')
+    cf.delete_stack(StackName=stack_name)
 
     rds = boto3.client('rds')
     for cluster in rds_clusters:
         rds.stop_db_cluster(DBClusterIdentifier=cluster)
 
     body = {
-        "message": "Stopped your instances "+str(instances),
+        "message": "QA and DEV environment stopped",
         "input": event
     }
     response = {

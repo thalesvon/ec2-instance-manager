@@ -22,8 +22,8 @@ functions:
     handler: src/start.start
     environment:
       region: 'us-east-1'
-      instances: 'i-008e6ffb96239b1e5 i-0da218f6da5cecbc1 i-0fb50980cc23f9bd2'
       rds: 'boomcredit-dev-cluster boomcredit-qa-cluster'
+      stack_params: '{"Params":[{"name":"ecs-spot-dev-cluster","template_url":"https://boomcredit-devops.s3.amazonaws.com/cloudformation-templates/ecs-spot-cluster/ecs-spot-dev-cluster.yml"},{"name":"ecs-spot-qa-cluster","template_url":"https://boomcredit-devops.s3.amazonaws.com/cloudformation-templates/ecs-spot-cluster/ecs-spot-qa-cluster.yml"}]}'
     package:
       include:
         - src/start.py
@@ -38,8 +38,8 @@ functions:
     handler: src/stop.stop
     environment:
       region: 'us-east-1'
-      instances: 'i-008e6ffb96239b1e5 i-0da218f6da5cecbc1 i-0fb50980cc23f9bd2'
       rds: 'boomcredit-dev-cluster boomcredit-qa-cluster'
+      stack_name: 'ecs-spot-dev-cluster ecs-spot-qa-cluster'
     package:
       include:
         - src/stop.py
