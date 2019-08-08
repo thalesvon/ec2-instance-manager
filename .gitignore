@@ -16,6 +16,7 @@ var/
 .installed.cfg
 *.egg
 .vscode
+node_modules
 
 #Cache
 __pycache__
