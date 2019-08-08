@@ -17,6 +17,9 @@ var/
 *.egg
 .vscode
 
+#Cache
+__pycache__
+
 # Serverless directories
 .serverless
 
