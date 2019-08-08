@@ -39,7 +39,7 @@ functions:
     environment:
       region: 'us-east-1'
       rds: 'boomcredit-dev-cluster boomcredit-qa-cluster'
-      stack_name: 'ecs-spot-dev-cluster ecs-spot-qa-cluster'
+      stack_params: '{"Params":[{"name":"ecs-spot-dev-cluster","template_url":"https://boomcredit-devops.s3.amazonaws.com/cloudformation-templates/ecs-spot-cluster/ecs-spot-dev-cluster.yml"},{"name":"ecs-spot-qa-cluster","template_url":"https://boomcredit-devops.s3.amazonaws.com/cloudformation-templates/ecs-spot-cluster/ecs-spot-qa-cluster.yml"}]}'
     package:
       include:
         - src/stop.py

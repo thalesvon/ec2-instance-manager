@@ -4,11 +4,14 @@ import os
 
 region = os.environ['region']
 rds_clusters = os.environ['rds'].split()
-stack_name = os.environ['stack_name']
+stack_params = os.environ['stack_params']
+
 
 def stop(event, context):
-    cf = boto3.client('cloudformation')
-    cf.delete_stack(StackName=stack_name)
+    stack_json = json.loads(stack_params)
+    for param in stack_json['Params']:
+        cf = boto3.client('cloudformation')
+        cf.delete_stack(StackName=param['name'])
 
     rds = boto3.client('rds')
     for cluster in rds_clusters:
