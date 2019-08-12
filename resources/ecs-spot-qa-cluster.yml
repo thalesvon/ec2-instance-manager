@@ -95,7 +95,10 @@ Resources:
               EOF
 
               aws route53 change-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --change-batch file:///home/ec2-user/dns.json
-              
+              ECS_CLUSTER=$(curl -s http://localhost:51678/v1/metadata | jq .Cluster | tr -d \")
+              CONTAINER_INSTANCE=$(curl -s http://localhost:51678/v1/metadata | jq .ContainerInstanceArn | tr -d \")
+              aws ecs update-container-agent --cluster $ECS_CLUSTER --container-instance $CONTAINER_INSTANCE
+
               cat <<EOF > /etc/init/spot-instance-termination-handler.conf
               description "Start spot instance termination handler monitoring script"
               author "BoltOps"
@@ -180,6 +183,7 @@ Resources:
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
       - arn:aws:iam::212568053769:policy/policy-start-stop-route53
+      - arn:aws:iam::212568053769:policy/policy-start-stop-ecs-update-agent
 
 Outputs:
   Vpc:
