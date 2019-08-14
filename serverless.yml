@@ -29,6 +29,7 @@ functions:
         - src/start.py
       exclude:
         - src/**
+        - resources/**
     events:
       - http:
           path: /start
@@ -45,6 +46,7 @@ functions:
         - src/stop.py
       exclude:
         - src/**
+        - resources/**
     events:
       - http:
           path: /stop
@@ -65,6 +67,7 @@ functions:
         - src/change.py
       exclude:
         - src/**
+        - resources/**
     events:
       - http:
           path: /change
