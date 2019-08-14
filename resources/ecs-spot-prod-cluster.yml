@@ -1,0 +1,401 @@
+
+---
+AWSTemplateFormatVersion: 2010-09-09
+Description: Prod Cluster Spot Fleet
+Parameters:
+  KeyName:
+    Type: String
+    Description: KeyName
+    Default: 'boomcredit-prod-cluster-2'
+  EcsCluster:
+    Type: String
+    Description: ECS Cluster
+    Default: boomcredit-prod-cluster
+  TargetCapacity:
+    Type: String
+    Description: TargetCapacity
+    Default: '4'
+  TagName:
+    Type: String
+    Description: TagName
+    Default: 'prod-cluster spotfleet'
+  SubnetID3A:
+    Type: String
+    Description: SubnetID3A
+    Default: 'subnet-4cc5f463'
+  SubnetID4B:
+    Type: String
+    Description: SubnetID4B
+    Default: 'subnet-6a679c20'
+  SubnetID33F:
+    Type: String
+    Description: SubnetID33F
+    Default: 'subnet-ca900ac5'
+  SecurityGroupID:
+    Type: String
+    Description: 'boomcredit-prod-cluster SG'
+    Default: 'sg-49627e3f'
+Conditions:
+  HasKeyName: !Not [!Equals [ !Ref KeyName, '' ]]
+Mappings:
+  AmiMap:
+    us-east-1:
+      Ami: ami-0bc08634af113cccb
+Resources:
+  SpotFleet:
+    Type: AWS::EC2::SpotFleet
+    Properties:
+      SpotFleetRequestConfigData:
+        SpotPrice: '0.0501'
+        IamFleetRole: !GetAtt IamFleetRole.Arn
+        TargetCapacity: !Ref TargetCapacity
+        LaunchSpecifications:
+
+        - EbsOptimized: 'false'
+          InstanceType: t3.xlarge
+          WeightedCapacity: 1
+          ImageId: !FindInMap
+            - AmiMap
+            - !Ref 'AWS::Region'
+            - Ami
+          KeyName: !If [HasKeyName, !Ref KeyName, !Ref "AWS::NoValue"]
+          SecurityGroups:
+          - GroupId: !Ref SecurityGroupID
+          Monitoring:
+            Enabled: true
+          UserData:
+            Fn::Base64: !Sub |
+              #!/bin/bash
+              
+              set -eux
+              mkdir -p /etc/ecs
+              echo ECS_CLUSTER=${EcsCluster} >> /etc/ecs/ecs.config
+              export PATH=/usr/local/bin:$PATH
+              yum -y install jq
+              easy_install pip
+              pip install awscli
+              aws configure set default.region ${AWS::Region}
+              HOSTED_ZONE_ID='ZGTKXKO161TQU'
+              DNS_NAME='cluster1.prod.boomcredit.mx.local.'
+              DNS_TYPE='A'
+              DNS_TTL=300
+              DNS_VALUE=$(curl -sf http://169.254.169.254/latest/meta-data/local-ipv4)
+              
+              cat <<EOF > /home/ec2-user/dns.json
+              {
+                  "Comment": "Internal IP for spot-cluster", 
+                  "Changes": [
+                      {
+                          "Action": "UPSERT", 
+                          "ResourceRecordSet": {
+                              "Name": "$DNS_NAME", 
+                              "Type": "$DNS_TYPE", 
+                              "TTL": $DNS_TTL, 
+                              "ResourceRecords": [
+                                  {
+                                      "Value": "$DNS_VALUE"
+                                  }
+                              ]
+                          }
+                      }
+                  ]
+              }
+              EOF
+
+              aws route53 change-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --change-batch file:///home/ec2-user/dns.json
+              ECS_CLUSTER=$(curl -s http://localhost:51678/v1/metadata | jq .Cluster | tr -d \")
+              CONTAINER_INSTANCE=$(curl -s http://localhost:51678/v1/metadata | jq .ContainerInstanceArn | tr -d \")
+              aws ecs update-container-agent --cluster $ECS_CLUSTER --container-instance $CONTAINER_INSTANCE --region us-east-1
+
+              cat <<EOF > /etc/init/spot-instance-termination-handler.conf
+              description "Start spot instance termination handler monitoring script"
+              author "BoltOps"
+              start on started ecs
+              script
+              echo \$\$ > /var/run/spot-instance-termination-handler.pid
+              exec /usr/local/bin/spot-instance-termination-handler.sh
+              end script
+              pre-start script
+              logger "[spot-instance-termination-handler.sh]: spot instance termination
+              notice handler started"
+              end script
+              EOF
+              
+              cat <<EOF > /usr/local/bin/spot-instance-termination-handler.sh
+              #!/bin/bash
+              while sleep 5; do
+              if [ -z \$(curl -Isf http://169.254.169.254/latest/meta-data/spot/termination-time)]; then
+              /bin/false
+              else
+              logger "[spot-instance-termination-handler.sh]: spot instance termination notice detected"
+              STATUS=DRAINING
+              ECS_CLUSTER=\$(curl -s http://localhost:51678/v1/metadata | jq .Cluster | tr -d \")
+              CONTAINER_INSTANCE=\$(curl -s http://localhost:51678/v1/metadata | jq .ContainerInstanceArn | tr -d \")
+              logger "[spot-instance-termination-handler.sh]: putting instance in state \$STATUS"
+              
+              /usr/local/bin/aws  ecs update-container-instances-state --cluster \$ECS_CLUSTER --container-instances \$CONTAINER_INSTANCE --status \$STATUS
+              
+              logger "[spot-instance-termination-handler.sh]: putting myself to sleep..."
+              sleep 120 # exit loop as instance expires in 120 secs after terminating notification
+              fi
+              done
+              EOF
+              
+              chmod +x /usr/local/bin/spot-instance-termination-handler.sh
+
+          IamInstanceProfile:
+            Arn: !GetAtt IamInstanceProfile.Arn
+          SubnetId: !Ref SubnetID3A
+          TagSpecifications:
+          - ResourceType: "instance"
+            Tags:
+            - Key: Name
+              Value: !Ref TagName
+
+        - EbsOptimized: 'false'
+          InstanceType: t3.xlarge
+          WeightedCapacity: 1
+          ImageId: !FindInMap
+            - AmiMap
+            - !Ref 'AWS::Region'
+            - Ami
+          KeyName: !If [HasKeyName, !Ref KeyName, !Ref "AWS::NoValue"]
+          SecurityGroups:
+          - GroupId: !Ref SecurityGroupID
+          Monitoring:
+            Enabled: true
+          UserData:
+            Fn::Base64: !Sub |
+              #!/bin/bash
+              
+              set -eux
+              mkdir -p /etc/ecs
+              echo ECS_CLUSTER=${EcsCluster} >> /etc/ecs/ecs.config
+              export PATH=/usr/local/bin:$PATH
+              yum -y install jq
+              easy_install pip
+              pip install awscli
+              aws configure set default.region ${AWS::Region}
+              HOSTED_ZONE_ID='ZGTKXKO161TQU'
+              DNS_NAME='cluster2.prod.boomcredit.mx.local.'
+              DNS_TYPE='A'
+              DNS_TTL=300
+              DNS_VALUE=$(curl -sf http://169.254.169.254/latest/meta-data/local-ipv4)
+              
+              cat <<EOF > /home/ec2-user/dns.json
+              {
+                  "Comment": "Internal IP for spot-cluster", 
+                  "Changes": [
+                      {
+                          "Action": "UPSERT", 
+                          "ResourceRecordSet": {
+                              "Name": "$DNS_NAME", 
+                              "Type": "$DNS_TYPE", 
+                              "TTL": $DNS_TTL, 
+                              "ResourceRecords": [
+                                  {
+                                      "Value": "$DNS_VALUE"
+                                  }
+                              ]
+                          }
+                      }
+                  ]
+              }
+              EOF
+
+              aws route53 change-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --change-batch file:///home/ec2-user/dns.json
+              ECS_CLUSTER=$(curl -s http://localhost:51678/v1/metadata | jq .Cluster | tr -d \")
+              CONTAINER_INSTANCE=$(curl -s http://localhost:51678/v1/metadata | jq .ContainerInstanceArn | tr -d \")
+              aws ecs update-container-agent --cluster $ECS_CLUSTER --container-instance $CONTAINER_INSTANCE --region us-east-1
+
+              cat <<EOF > /etc/init/spot-instance-termination-handler.conf
+              description "Start spot instance termination handler monitoring script"
+              author "BoltOps"
+              start on started ecs
+              script
+              echo \$\$ > /var/run/spot-instance-termination-handler.pid
+              exec /usr/local/bin/spot-instance-termination-handler.sh
+              end script
+              pre-start script
+              logger "[spot-instance-termination-handler.sh]: spot instance termination
+              notice handler started"
+              end script
+              EOF
+              
+              cat <<EOF > /usr/local/bin/spot-instance-termination-handler.sh
+              #!/bin/bash
+              while sleep 5; do
+              if [ -z \$(curl -Isf http://169.254.169.254/latest/meta-data/spot/termination-time)]; then
+              /bin/false
+              else
+              logger "[spot-instance-termination-handler.sh]: spot instance termination notice detected"
+              STATUS=DRAINING
+              ECS_CLUSTER=\$(curl -s http://localhost:51678/v1/metadata | jq .Cluster | tr -d \")
+              CONTAINER_INSTANCE=\$(curl -s http://localhost:51678/v1/metadata | jq .ContainerInstanceArn | tr -d \")
+              logger "[spot-instance-termination-handler.sh]: putting instance in state \$STATUS"
+              
+              /usr/local/bin/aws  ecs update-container-instances-state --cluster \$ECS_CLUSTER --container-instances \$CONTAINER_INSTANCE --status \$STATUS
+              
+              logger "[spot-instance-termination-handler.sh]: putting myself to sleep..."
+              sleep 120 # exit loop as instance expires in 120 secs after terminating notification
+              fi
+              done
+              EOF
+              
+              chmod +x /usr/local/bin/spot-instance-termination-handler.sh
+
+          IamInstanceProfile:
+            Arn: !GetAtt IamInstanceProfile.Arn
+          SubnetId: !Ref SubnetID4B
+          TagSpecifications:
+          - ResourceType: "instance"
+            Tags:
+            - Key: Name
+              Value: !Ref TagName
+
+        - EbsOptimized: 'false'
+          InstanceType: t3.xlarge
+          WeightedCapacity: 1
+          ImageId: !FindInMap
+            - AmiMap
+            - !Ref 'AWS::Region'
+            - Ami
+          KeyName: !If [HasKeyName, !Ref KeyName, !Ref "AWS::NoValue"]
+          SecurityGroups:
+          - GroupId: !Ref SecurityGroupID
+          Monitoring:
+            Enabled: true
+          UserData:
+            Fn::Base64: !Sub |
+              #!/bin/bash
+              
+              set -eux
+              mkdir -p /etc/ecs
+              echo ECS_CLUSTER=${EcsCluster} >> /etc/ecs/ecs.config
+              export PATH=/usr/local/bin:$PATH
+              yum -y install jq
+              easy_install pip
+              pip install awscli
+              aws configure set default.region ${AWS::Region}
+              HOSTED_ZONE_ID='ZGTKXKO161TQU'
+              DNS_NAME='cluster3.prod.boomcredit.mx.local.'
+              DNS_TYPE='A'
+              DNS_TTL=300
+              DNS_VALUE=$(curl -sf http://169.254.169.254/latest/meta-data/local-ipv4)
+              
+              cat <<EOF > /home/ec2-user/dns.json
+              {
+                  "Comment": "Internal IP for spot-cluster", 
+                  "Changes": [
+                      {
+                          "Action": "UPSERT", 
+                          "ResourceRecordSet": {
+                              "Name": "$DNS_NAME", 
+                              "Type": "$DNS_TYPE", 
+                              "TTL": $DNS_TTL, 
+                              "ResourceRecords": [
+                                  {
+                                      "Value": "$DNS_VALUE"
+                                  }
+                              ]
+                          }
+                      }
+                  ]
+              }
+              EOF
+
+              aws route53 change-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --change-batch file:///home/ec2-user/dns.json
+              ECS_CLUSTER=$(curl -s http://localhost:51678/v1/metadata | jq .Cluster | tr -d \")
+              CONTAINER_INSTANCE=$(curl -s http://localhost:51678/v1/metadata | jq .ContainerInstanceArn | tr -d \")
+              aws ecs update-container-agent --cluster $ECS_CLUSTER --container-instance $CONTAINER_INSTANCE --region us-east-1
+
+              cat <<EOF > /etc/init/spot-instance-termination-handler.conf
+              description "Start spot instance termination handler monitoring script"
+              author "BoltOps"
+              start on started ecs
+              script
+              echo \$\$ > /var/run/spot-instance-termination-handler.pid
+              exec /usr/local/bin/spot-instance-termination-handler.sh
+              end script
+              pre-start script
+              logger "[spot-instance-termination-handler.sh]: spot instance termination
+              notice handler started"
+              end script
+              EOF
+              
+              cat <<EOF > /usr/local/bin/spot-instance-termination-handler.sh
+              #!/bin/bash
+              while sleep 5; do
+              if [ -z \$(curl -Isf http://169.254.169.254/latest/meta-data/spot/termination-time)]; then
+              /bin/false
+              else
+              logger "[spot-instance-termination-handler.sh]: spot instance termination notice detected"
+              STATUS=DRAINING
+              ECS_CLUSTER=\$(curl -s http://localhost:51678/v1/metadata | jq .Cluster | tr -d \")
+              CONTAINER_INSTANCE=\$(curl -s http://localhost:51678/v1/metadata | jq .ContainerInstanceArn | tr -d \")
+              logger "[spot-instance-termination-handler.sh]: putting instance in state \$STATUS"
+              
+              /usr/local/bin/aws  ecs update-container-instances-state --cluster \$ECS_CLUSTER --container-instances \$CONTAINER_INSTANCE --status \$STATUS
+              
+              logger "[spot-instance-termination-handler.sh]: putting myself to sleep..."
+              sleep 120 # exit loop as instance expires in 120 secs after terminating notification
+              fi
+              done
+              EOF
+              
+              chmod +x /usr/local/bin/spot-instance-termination-handler.sh
+
+          IamInstanceProfile:
+            Arn: !GetAtt IamInstanceProfile.Arn
+          SubnetId: !Ref SubnetID33F
+          TagSpecifications:
+          - ResourceType: "instance"
+            Tags:
+            - Key: Name
+              Value: !Ref TagName
+          
+## IAM Roles
+  IamFleetRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - spotfleet.amazonaws.com
+        Version: 2012-10-17
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AmazonEC2SpotFleetRole
+      Path: /
+  IamInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    DependsOn:
+    - IamInstanceRole
+    Properties:
+      Path: /
+      Roles:
+      - Ref: IamInstanceRole
+  IamInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+        Version: 2012-10-17
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
+      - arn:aws:iam::212568053769:policy/policy-start-stop-route53
+      - arn:aws:iam::212568053769:policy/policy-start-stop-ecs-update-agent
+
+Outputs:
+  Vpc:
+    Description: The ID of the VPC
+    Value: "Vpc"
