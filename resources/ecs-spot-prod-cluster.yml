@@ -3,6 +3,10 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: Prod Cluster Spot Fleet
 Parameters:
+  Environment:
+    Type: String
+    Description: Environment
+    Default: 'prod'
   KeyName:
     Type: String
     Description: KeyName
@@ -252,6 +256,8 @@ Resources:
             Tags:
             - Key: Name
               Value: !Ref TagName
+            - Key: Environment
+              Value: !Ref Environment
 
         - EbsOptimized: 'false'
           InstanceType: t3.xlarge
