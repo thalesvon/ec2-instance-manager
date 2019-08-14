@@ -14,7 +14,7 @@ Parameters:
   TargetCapacity:
     Type: String
     Description: TargetCapacity
-    Default: '12'
+    Default: '3'
   TagName:
     Type: String
     Description: TagName
@@ -45,7 +45,7 @@ Resources:
 
         - EbsOptimized: 'false'
           InstanceType: t3.medium
-          WeightedCapacity: 4
+          WeightedCapacity: 1
           ImageId: !FindInMap
             - AmiMap
             - !Ref 'AWS::Region'
@@ -97,8 +97,11 @@ Resources:
               aws route53 change-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --change-batch file:///home/ec2-user/dns.json
               ECS_CLUSTER=$(curl -s http://localhost:51678/v1/metadata | jq .Cluster | tr -d \")
               CONTAINER_INSTANCE=$(curl -s http://localhost:51678/v1/metadata | jq .ContainerInstanceArn | tr -d \")
-              aws ecs update-container-agent --cluster $ECS_CLUSTER --container-instance $CONTAINER_INSTANCE
+              aws ecs update-container-agent --cluster $ECS_CLUSTER --container-instance $CONTAINER_INSTANCE --region us-east-1
 
+              sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+              sudo service sshd restart
+              
               cat <<EOF > /etc/init/spot-instance-termination-handler.conf
               description "Start spot instance termination handler monitoring script"
               author "BoltOps"
