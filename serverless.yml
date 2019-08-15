@@ -16,6 +16,8 @@ package:
   exclude:
     - ec2/**
     - README.md
+    - resources/**
+  mode: 644
 
 functions:
   start:
@@ -30,6 +32,7 @@ functions:
       exclude:
         - src/**
         - resources/**
+      mode: 644
     events:
       - http:
           path: /start
@@ -47,6 +50,7 @@ functions:
       exclude:
         - src/**
         - resources/**
+      mode: 644
     events:
       - http:
           path: /stop
@@ -68,6 +72,7 @@ functions:
       exclude:
         - src/**
         - resources/**
+      mode: 644
     events:
       - http:
           path: /change
