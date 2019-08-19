@@ -103,8 +103,8 @@ Resources:
               CONTAINER_INSTANCE=$(curl -s http://localhost:51678/v1/metadata | jq .ContainerInstanceArn | tr -d \")
               aws ecs update-container-agent --cluster $ECS_CLUSTER --container-instance $CONTAINER_INSTANCE --region us-east-1
 
-              sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
-              sudo service sshd restart
+              sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+              service sshd restart
 
               cat <<EOF > /etc/init/spot-instance-termination-handler.conf
               description "Start spot instance termination handler monitoring script"
