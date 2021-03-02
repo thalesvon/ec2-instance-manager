@@ -1,36 +1,32 @@
 
 ---
 AWSTemplateFormatVersion: 2010-09-09
-Description: Dev Cluster Spot Fleet
+Description: Demo Cluster Spot Fleet
 Parameters:
-  Environment:
-    Type: String
-    Description: Environment
-    Default: 'dev'
   KeyName:
     Type: String
     Description: KeyName
-    Default: 'boomcredit-qa-cluster'
+    Default: 'demo-cluster'
   EcsCluster:
     Type: String
     Description: ECS Cluster
-    Default: boomcredit-dev-cluster
+    Default: demo-cluster
   TargetCapacity:
     Type: String
     Description: TargetCapacity
-    Default: '2'
+    Default: '3'
   TagName:
     Type: String
     Description: TagName
-    Default: 'dev-cluster spotfleet'
+    Default: 'demo-cluster spotfleet'
   SubnetID:
     Type: String
     Description: SubnetID
-    Default: 'subnet-19079e7d'
+    Default: 'subnet-1d37ab7a'
   SecurityGroupID:
     Type: String
     Description: SG
-    Default: 'sg-00029095a9d407fed'
+    Default: 'sg-0b43edae9e129c2c7'
 Conditions:
   HasKeyName: !Not [!Equals [ !Ref KeyName, '' ]]
 Mappings:
@@ -39,7 +35,7 @@ Mappings:
       Ami: ami-0b9a214f40c38d5eb
 Resources:
   SpotFleet:
-    Type: AWS::EC2::SpotFleet
+    Type: AWS::EC2::SpotFleet 
     Properties:
       SpotFleetRequestConfigData:
         SpotPrice: '0.0125'
@@ -71,44 +67,40 @@ Resources:
               easy_install pip
               pip install awscli
               aws configure set default.region ${AWS::Region}
-              HOSTED_ZONE_ID='ZGTKXKO161TQU'
-              DNS_NAME='cluster1.dev.boomcredit.mx.local.'
-              DNS_TYPE='A'
-              DNS_TTL=300
-              DNS_VALUE=$(curl -sf http://169.254.169.254/latest/meta-data/local-ipv4)
               
-              cat <<EOF > /home/ec2-user/dns.json
-              {
-                  "Comment": "Internal IP for spot-cluster", 
-                  "Changes": [
-                      {
-                          "Action": "UPSERT", 
-                          "ResourceRecordSet": {
-                              "Name": "$DNS_NAME", 
-                              "Type": "$DNS_TYPE", 
-                              "TTL": $DNS_TTL, 
-                              "ResourceRecords": [
-                                  {
-                                      "Value": "$DNS_VALUE"
-                                  }
-                              ]
-                          }
-                      }
-                  ]
-              }
-              EOF
+              #HOSTED_ZONE_ID='ZZZZZZZZZZZZZ'
+              #DNS_NAME='my.private.dns.local.'
+              #DNS_TYPE='A'
+              #DNS_TTL=300
+              #DNS_VALUE=$(curl -sf http://169.254.169.254/latest/meta-data/local-ipv4)
+              
+              #cat <<EOF > /home/ec2-user/dns.json
+              #{
+              #    "Comment": "Internal IP for spot-cluster", 
+              #    "Changes": [
+              #        {
+              #            "Action": "UPSERT", 
+              #            "ResourceRecordSet": {
+              #                "Name": "$DNS_NAME", 
+              #                "Type": "$DNS_TYPE", 
+              #                "TTL": $DNS_TTL, 
+              #                "ResourceRecords": [
+              #                   {
+              #                        "Value": "$DNS_VALUE"
+              #                    }
+              #                ]
+              #            }
+              #        }
+              #    ]
+              #}
+              #EOF
 
-              aws route53 change-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --change-batch file:///home/ec2-user/dns.json
-              ECS_CLUSTER=$(curl -s http://localhost:51678/v1/metadata | jq .Cluster | tr -d \")
-              CONTAINER_INSTANCE=$(curl -s http://localhost:51678/v1/metadata | jq .ContainerInstanceArn | tr -d \")
-              aws ecs update-container-agent --cluster $ECS_CLUSTER --container-instance $CONTAINER_INSTANCE --region us-east-1
-
-              sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
-              service sshd restart
+              #aws route53 change-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --change-batch file:///home/ec2-user/dns.json
+              yum update -y ecs-init
+              service docker restart && sudo start ecs
 
               cat <<EOF > /etc/init/spot-instance-termination-handler.conf
               description "Start spot instance termination handler monitoring script"
-              author "BoltOps"
               start on started ecs
               script
               echo \$\$ > /var/run/spot-instance-termination-handler.pid
@@ -150,8 +142,6 @@ Resources:
             Tags:
             - Key: Name
               Value: !Ref TagName
-            - Key: Environment
-              Value: !Ref Environment
           
 ## IAM Roles
   IamFleetRole:
@@ -191,8 +181,7 @@ Resources:
         Version: 2012-10-17
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
-      - arn:aws:iam::212568053769:policy/policy-start-stop-route53
-      - arn:aws:iam::212568053769:policy/policy-start-stop-ecs-update-agent
+      - arn:aws:iam::aws:policy/AdministratorAccess
 
 Outputs:
   Vpc:

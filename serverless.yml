@@ -9,14 +9,14 @@ provider:
   deploymentBucket:
     tags: 
       profile: automation
-  role: arn:aws:iam::212568053769:role/role-lambda-start-stop-ec2
+  role: arn:aws:iam::776449101057:role/role-lambda-start-stop-ec2
 
 package:
   individually: true
   exclude:
     - ec2/**
     - README.md
-    - resources/**
+    - node_modules/**
   mode: 644
 
 functions:
@@ -24,14 +24,13 @@ functions:
     handler: src/start.start
     environment:
       region: 'us-east-1'
-      rds: 'boomcredit-dev-cluster boomcredit-qa-cluster'
-      stack_params: '{"Params":[{"name":"ecs-spot-dev-cluster","template_url":"https://boomcredit-devops.s3.amazonaws.com/cloudformation-templates/ecs-spot-cluster/ecs-spot-dev-cluster.yml"},{"name":"ecs-spot-qa-cluster","template_url":"https://boomcredit-devops.s3.amazonaws.com/cloudformation-templates/ecs-spot-cluster/ecs-spot-qa-cluster.yml"}]}'
+      stack_params: '{"Params":[{"name":"ecs-spot-demo-cluster","template_url":"https://demo-user-group-cf.s3.amazonaws.com/demo.yml"}]}'
     package:
       include:
         - src/start.py
       exclude:
         - src/**
-        - resources/**
+        - node_modules/**
       mode: 644
     events:
       - http:
@@ -42,14 +41,13 @@ functions:
     handler: src/stop.stop
     environment:
       region: 'us-east-1'
-      rds: 'boomcredit-dev-cluster boomcredit-qa-cluster'
-      stack_params: '{"Params":[{"name":"ecs-spot-dev-cluster","template_url":"https://boomcredit-devops.s3.amazonaws.com/cloudformation-templates/ecs-spot-cluster/ecs-spot-dev-cluster.yml"},{"name":"ecs-spot-qa-cluster","template_url":"https://boomcredit-devops.s3.amazonaws.com/cloudformation-templates/ecs-spot-cluster/ecs-spot-qa-cluster.yml"}]}'
+      stack_params: '{"Params":[{"name":"ecs-spot-demo-cluster","template_url":"https://demo-user-group-cf.s3.amazonaws.com/demo.yml"}]}'
     package:
       include:
         - src/stop.py
       exclude:
         - src/**
-        - resources/**
+        - node_modules/**
       mode: 644
     events:
       - http:
@@ -60,8 +58,6 @@ functions:
     handler: src/change.change
     environment:
       region: 'us-east-1'
-      instances: 'i-008e6ffb96239b1e5 i-0da218f6da5cecbc1 i-0fb50980cc23f9bd2'
-      rds: 'boomcredit-dev-cluster boomcredit-qa-cluster'
       start_event: 'StartEC2instances'
       stop_event: 'StopEC2instances'
       slack_token: 'xoxb-293645508629-622608232563-wAbR7cJykuFzZkYd25OuzZfY'
@@ -71,7 +67,7 @@ functions:
         - src/change.py
       exclude:
         - src/**
-        - resources/**
+        - node_modules/**
       mode: 644
     events:
       - http:

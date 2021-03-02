@@ -3,7 +3,6 @@ import boto3
 import os
 
 region = os.environ['region']
-rds_clusters = os.environ['rds'].split()
 stack_params = os.environ['stack_params']
 
 
@@ -13,12 +12,8 @@ def stop(event, context):
         cf = boto3.client('cloudformation')
         cf.delete_stack(StackName=param['name'])
 
-    rds = boto3.client('rds')
-    for cluster in rds_clusters:
-        rds.stop_db_cluster(DBClusterIdentifier=cluster)
-
     body = {
-        "message": "QA and DEV environment stopped",
+        "message": "Stack Deleted",
         "input": event
     }
     response = {
